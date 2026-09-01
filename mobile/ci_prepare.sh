@@ -20,3 +20,14 @@ else
 fi
 
 python3 mobile/ci_patch_p4a.py "$P4A_DIR"
+
+# pip 26 regresyonu: android etiketli wheel'i cozumlemede secip kurulumda
+# reddediyor ("is not a supported wheel on this platform"). Venv pip'ini
+# sagli 25.3 surumune sabitle.
+BUILD_PY="$P4A_DIR/pythonforandroid/build.py"
+if grep -q "pip install -U pip" "$BUILD_PY"; then
+    sed -i "s/pip install -U pip/pip install -U 'pip==25.3'/" "$BUILD_PY"
+    echo "ci_prepare: build.py venv pip'i 25.3'e sabitlendi"
+else
+    echo "ci_prepare: build.py pip yamasi zaten uygulanmis veya desen degisti"
+fi
