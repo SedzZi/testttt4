@@ -31,3 +31,35 @@ if grep -q "pip install -U pip" "$BUILD_PY"; then
 else
     echo "ci_prepare: build.py pip yamasi zaten uygulanmis veya desen degisti"
 fi
+
+# charset_normalizer'in p4a recipe'si yok; pip --target ile C-eklentili
+# android wheel'ini kuramiyor ("not a supported wheel on this platform").
+# Saf python recipe ekleyerek pip yolunu bypass ediyoruz (p4a'nin onerdigi
+# cozum: "IF THIS FAILS, THE MODULES MAY NEED A RECIPE").
+CN_DIR="$P4A_DIR/pythonforandroid/recipes/charset_normalizer"
+if [ ! -f "$CN_DIR/__init__.py" ]; then
+    mkdir -p "$CN_DIR"
+    cat > "$CN_DIR/__init__.py" <<'EOF'
+from pythonforandroid.recipe import PythonRecipe
+
+
+class CharsetNormalizerRecipe(PythonRecipe):
+    name = 'charset_normalizer'
+    version = '3.4.2'
+    # dosya adi underscore'lu (charset_normalizer-...), harf yolu
+    # package adiyla (charset-normalizer) ayri seyler
+    url = ('https://pypi.org/packages/source/c/charset-normalizer/'
+           'charset_normalizer-{version}.tar.gz')
+    depends = ['python3', 'setuptools']
+    # saf python: dogrudan hedef site-packages'a kurulur,
+    # pip'in android wheel kontrolune takilmaz
+    call_hostpython_via_targetpython = False
+    install_in_hostpython = False
+
+
+recipe = CharsetNormalizerRecipe()
+EOF
+    echo "ci_prepare: charset_normalizer recipe eklendi ($CN_DIR)"
+else
+    echo "ci_prepare: charset_normalizer recipe zaten mevcut"
+fi

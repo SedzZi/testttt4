@@ -23,7 +23,9 @@ version = 0.1.0
 
 # (list) Gereksinimler
 # python3, kivy (arayüz), pyjnius (Java köprüsü), android (p4a android modülü)
-requirements = python3,kivy==2.3.1,pyjnius,android
+# charset_normalizer: kivy->requests zincirinin bağımlılığı; recipe olarak
+# derlenmesi için burada açıkça listelenir (pip android wheel'ini kuramaz)
+requirements = python3,kivy==2.3.1,pyjnius,android,charset_normalizer
 
 # (list) Yönlendirme
 orientation = portrait
