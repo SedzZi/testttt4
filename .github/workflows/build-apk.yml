@@ -41,8 +41,8 @@ jobs:
 
       - name: p4a hazirla (BootReceiver yamasi) ve APK derle
         run: |
-          set -o pipefail
-          bash -x mobile/ci_prepare.sh 2>&1 | tee prepare.log || true
+          set +e
+          bash -x mobile/ci_prepare.sh 2>&1 | tee prepare.log
           pstatus=${PIPESTATUS[0]}
           echo "ci_prepare cikis kodu: $pstatus"
           if [ $pstatus -ne 0 ]; then
@@ -50,7 +50,7 @@ jobs:
             tail -n 30 prepare.log
             exit $pstatus
           fi
-          buildozer -v android debug 2>&1 | tee build.log || true
+          buildozer -v android debug 2>&1 | tee build.log
           status=${PIPESTATUS[0]}
           echo "buildozer cikis kodu: $status"
           if [ $status -ne 0 ]; then
