@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Buildozer / p4a (bulutta derleniyor)
+.buildozer/
+bin/
+mobile/bin/
+
+# Windows derlemeleri (masaüstü exe'leri depoya gerek yok)
+build/
+dist/
+
+# Geçici
+*.log
