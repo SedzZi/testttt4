@@ -32,6 +32,17 @@ else
     echo "ci_prepare: build.py pip yamasi zaten uygulanmis veya desen degisti"
 fi
 
+# gradle ciktisi _tail=20 ile loglaniyor -> manifest merger hatasinin gercek
+# nedeni ("Caused by: ...") log'a hic dusmuyor. --stacktrace ekle ve ciktiyi
+# genislet.
+TC_PY="$P4A_DIR/pythonforandroid/toolchain.py"
+if grep -q 'shprint(gradlew, "clean", gradle_task, _tail=20,' "$TC_PY"; then
+    sed -i 's/shprint(gradlew, "clean", gradle_task, _tail=20,/shprint(gradlew, "clean", gradle_task, "--stacktrace", _tail=400,/' "$TC_PY"
+    echo "ci_prepare: gradle --stacktrace ve genis cikti yamasi uygulandi"
+else
+    echo "ci_prepare: gradle yamasi zaten uygulanmis veya desen degisti"
+fi
+
 # charset_normalizer'in p4a recipe'si yok; pip --target ile C-eklentili
 # android wheel'ini kuramiyor ("not a supported wheel on this platform").
 # Saf python recipe ekleyerek pip yolunu bypass ediyoruz (p4a'nin onerdigi
