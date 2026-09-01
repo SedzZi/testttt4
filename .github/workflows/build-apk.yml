@@ -63,14 +63,23 @@ jobs:
               echo '--- gradle What went wrong ---'
               grep -a -A 12 'What went wrong' build.log | tail -n 40
               echo '--- error / failure satirlari ---'
-              grep -anE 'error:|e: |Execution failed|FAILURE: |Caused by|Exception' build.log | tail -n 30
-              echo '--- son 20 satir ---'
-              tail -n 20 build.log
+              grep -anE 'error:|e: |Execution failed|FAILURE: |Caused by|unexpected|expected|Unparsed|MERGE' build.log | grep -av 'performance hint' | tail -n 40
+              echo '--- son 15 satir ---'
+              tail -n 15 build.log
             } > err_excerpt.txt
             # ANSI temizle + gradle progress noktalarini sikistir; tek satira duzlestir
             sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g' -e 's/\r//g' -e 's/[\x00-\x08\x0b\x0c\x0e-\x1f]//g' -e 's/\.\{20,\}/../g' err_excerpt.txt \
               | tr '\n' '|' | cut -c1-3900 > err_flat.txt
             echo "::error::$(cat err_flat.txt)"
+            # dist manifest'i ayri annotation'da (parse hatasi teshisi icin)
+            mf=.buildozer/android/platform/build-arm64-v8a/dists/lanmobile/src/main/AndroidManifest.xml
+            if [ -f "$mf" ]; then
+              sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g' -e 's/\r//g' "$mf" \
+                | tr '\n' '~' | cut -c1-3900 > mf_flat.txt
+              echo "::error::DISTMANIFEST $(cat mf_flat.txt)"
+            else
+              echo "::error::DISTMANIFEST bulunamadi: $mf"
+            fi
             exit $status
           fi
 
