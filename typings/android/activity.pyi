@@ -1,0 +1,6 @@
+from typing import Any, Callable
+
+def bind(python_activity: Any) -> None: ...
+
+def activity_result(on_new_intent: "Callable[..., Any] | None" = None,
+                    on_activity_result: "Callable[..., Any] | None" = None) -> None: ...
