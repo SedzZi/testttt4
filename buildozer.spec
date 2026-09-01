@@ -72,7 +72,9 @@ android.archs = arm64-v8a
 android.accept_sdk_license = True
 
 # (str) p4a dalı
-p4a.branch = develop
+# NOT: develop dali kararsizdir (libthorvg tarifi arm64'te patlar);
+# buildozer'in varsayilani ve kivy 2.3.1 ile uyumlu olan master kullanilir.
+p4a.branch = master
 
 [buildozer]
 

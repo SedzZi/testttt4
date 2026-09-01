@@ -10,7 +10,7 @@ cd "$(dirname "$0")/.."   # depo koku
 
 P4A_DIR=".buildozer/android/platform/python-for-android"
 P4A_URL="https://github.com/kivy/python-for-android.git"
-P4A_BRANCH="develop"      # buildozer.spec: p4a.branch ile ayni olmali
+P4A_BRANCH="master"       # buildozer.spec: p4a.branch ile ayni olmali
 
 if [ ! -d "$P4A_DIR/.git" ]; then
     echo "ci_prepare: p4a klonlaniyor ($P4A_BRANCH) -> $P4A_DIR"
