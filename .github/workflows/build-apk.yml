@@ -14,18 +14,39 @@ jobs:
       - name: Kodu indir
         uses: actions/checkout@v4
 
-      - name: Buildozer ile derle (bulutta)
-        uses: ArtemSBulgakov/buildozer-action@v1
-        id: buildozer
+      - name: Python kur
+        uses: actions/setup-python@v5
         with:
-          # p4a'yi klonla + BootReceiver yamasini uygula, ardindan derle
-          command: bash mobile/ci_prepare.sh && buildozer -v android debug
-          workdir: .
-          buildozer_version: stable
+          python-version: '3.11'
 
-      - name: APK'yi indirilmeye hazırla
+      - name: JDK 17 kur
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # kivy/buildozer resmi imajindaki sistem paketleriyle ayni set
+      - name: Sistem bagimliliklarini kur
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq -y --no-install-recommends \
+            autoconf automake build-essential ccache cmake gettext \
+            libffi-dev libltdl-dev libssl-dev libtool patch pkg-config \
+            unzip zip zlib1g-dev
+
+      - name: Buildozer kur
+        run: |
+          pip install --upgrade pip wheel "cython<3.0"
+          pip install git+https://github.com/kivy/buildozer.git@master
+
+      - name: p4a hazirla (BootReceiver yamasi) ve APK derle
+        run: |
+          bash mobile/ci_prepare.sh
+          buildozer -v android debug
+
+      - name: APK'yi indirilmeye hazirla
         uses: actions/upload-artifact@v4
         with:
           name: lan-apk
-          path: ${{ steps.buildozer.outputs.filename }}
+          path: bin/*.apk
           if-no-files-found: error
