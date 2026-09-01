@@ -50,6 +50,10 @@ jobs:
             tail -n 30 prepare.log
             exit $pstatus
           fi
+          # NOT: pip 26, android wheel'ini cozumlemede secip kurulumda
+          # reddediyor; charset-normalizer'i kaynaktan kurmaya zorluyoruz.
+          # (p4a calisani tum env'i pip'e aktarir)
+          export PIP_NO_BINARY=charset-normalizer
           buildozer -v android debug 2>&1 | tee build.log
           status=${PIPESTATUS[0]}
           echo "buildozer cikis kodu: $status"
