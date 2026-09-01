@@ -47,10 +47,17 @@ jobs:
           status=$?
           if [ $status -ne 0 ]; then
             echo "::error::buildozer cikis kodu $status"
-            grep -naE 'error|Error|ERROR|Traceback|FAILURE|Exception|failed' build.log \
-              | tail -n 40 | cut -c1-350 | while IFS= read -r line; do
-                echo "::error::$line"
-              done
+            # Hatayi tanimla: Traceback yoksa son 25 satir
+            start=$(grep -na 'Traceback (most recent call last)' build.log | tail -n1 | cut -d: -f1)
+            if [ -n "$start" ]; then
+              tail -n +$start build.log | head -n 40 > err_excerpt.txt
+            else
+              tail -n 25 build.log > err_excerpt.txt
+            fi
+            # ANSI kodlarini temizle; satirlari ~2500'lik gruplar hâlinde annotation'a yaz
+            sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g' -e 's/\r//g' -e 's/[\x00-\x08\x0b\x0c\x0e-\x1f]//g' err_excerpt.txt \
+              | awk '{ total += length($0) + 1; buf = buf $0 "\n"; if (total > 2500) { print buf "\n---GRUP SONU---"; buf=""; total=0 } } END { if (buf != "") print buf }' \
+              | awk 'BEGIN{RS="---GRUP SONU---"} NF { gsub(/^[[:space:]]+|[[:space:]]+$/, ""); print "::error::" $0 }'
             exit $status
           fi
 
