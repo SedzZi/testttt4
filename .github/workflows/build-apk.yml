@@ -41,14 +41,22 @@ jobs:
 
       - name: p4a hazirla (BootReceiver yamasi) ve APK derle
         run: |
-          bash mobile/ci_prepare.sh
           set -o pipefail
-          buildozer -v android debug 2>&1 | tee build.log
-          status=$?
+          bash -x mobile/ci_prepare.sh 2>&1 | tee prepare.log || true
+          pstatus=${PIPESTATUS[0]}
+          echo "ci_prepare cikis kodu: $pstatus"
+          if [ $pstatus -ne 0 ]; then
+            echo "::error::ci_prepare basarisiz (kod $pstatus)"
+            tail -n 30 prepare.log
+            exit $pstatus
+          fi
+          buildozer -v android debug 2>&1 | tee build.log || true
+          status=${PIPESTATUS[0]}
+          echo "buildozer cikis kodu: $status"
           if [ $status -ne 0 ]; then
-            echo "::error::buildozer cikis kodu $status"
+            echo "::error::buildozer basarisiz (kod $status)"
             # Hatayi tanimla: Traceback yoksa son 25 satir
-            start=$(grep -na 'Traceback (most recent call last)' build.log | tail -n1 | cut -d: -f1)
+            start=$(grep -na 'Traceback (most recent call last)' build.log | tail -n1 | cut -d: -f1 || true)
             if [ -n "$start" ]; then
               tail -n +$start build.log | head -n 40 > err_excerpt.txt
             else
@@ -66,7 +74,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-log
-          path: build.log
+          path: |
+            build.log
+            prepare.log
           if-no-files-found: ignore
 
       - name: APK'yi indirilmeye hazirla
