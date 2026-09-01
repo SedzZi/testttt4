@@ -62,10 +62,11 @@ jobs:
             else
               tail -n 25 build.log > err_excerpt.txt
             fi
-            # ANSI kodlarini temizle; satirlari ~2500'lik gruplar hâlinde annotation'a yaz
+            # ANSI kodlarini temizle; GitHub annotation ilk satiri gosterdigi
+            # icin tum icerigi tek satira duzlestir
             sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g' -e 's/\r//g' -e 's/[\x00-\x08\x0b\x0c\x0e-\x1f]//g' err_excerpt.txt \
-              | awk '{ total += length($0) + 1; buf = buf $0 "\n"; if (total > 2500) { print buf "\n---GRUP SONU---"; buf=""; total=0 } } END { if (buf != "") print buf }' \
-              | awk 'BEGIN{RS="---GRUP SONU---"} NF { gsub(/^[[:space:]]+|[[:space:]]+$/, ""); print "::error::" $0 }'
+              | tr '\n' '|' | cut -c1-3900 > err_flat.txt
+            echo "::error::$(cat err_flat.txt)"
             exit $status
           fi
 
