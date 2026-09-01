@@ -1,0 +1,10 @@
+# Betikler Linux container'da calisir — satir sonlari LF olmali
+*.sh text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.xml text eol=lf
+
+# Derleme ciktilari
+.buildozer/
+bin/
+dist/

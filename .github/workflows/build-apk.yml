@@ -18,7 +18,8 @@ jobs:
         uses: ArtemSBulgakov/buildozer-action@v1
         id: buildozer
         with:
-          command: buildozer android debug
+          # p4a'yi klonla + BootReceiver yamasini uygula, ardindan derle
+          command: bash mobile/ci_prepare.sh && buildozer -v android debug
           workdir: .
           buildozer_version: stable
 
