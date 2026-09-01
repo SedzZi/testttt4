@@ -59,16 +59,16 @@ jobs:
           echo "buildozer cikis kodu: $status"
           if [ $status -ne 0 ]; then
             echo "::error::buildozer basarisiz (kod $status)"
-            # Hatayi tanimla: Traceback yoksa son 25 satir
-            start=$(grep -na 'Traceback (most recent call last)' build.log | tail -n1 | cut -d: -f1 || true)
-            if [ -n "$start" ]; then
-              tail -n +$start build.log | head -n 40 > err_excerpt.txt
-            else
-              tail -n 25 build.log > err_excerpt.txt
-            fi
-            # ANSI kodlarini temizle; GitHub annotation ilk satiri gosterdigi
-            # icin tum icerigi tek satira duzlestir
-            sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g' -e 's/\r//g' -e 's/[\x00-\x08\x0b\x0c\x0e-\x1f]//g' err_excerpt.txt \
+            {
+              echo '--- gradle What went wrong ---'
+              grep -a -A 12 'What went wrong' build.log | tail -n 40
+              echo '--- error / failure satirlari ---'
+              grep -anE 'error:|e: |Execution failed|FAILURE: |Caused by|Exception' build.log | tail -n 30
+              echo '--- son 20 satir ---'
+              tail -n 20 build.log
+            } > err_excerpt.txt
+            # ANSI temizle + gradle progress noktalarini sikistir; tek satira duzlestir
+            sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g' -e 's/\r//g' -e 's/[\x00-\x08\x0b\x0c\x0e-\x1f]//g' -e 's/\.\{20,\}/../g' err_excerpt.txt \
               | tr '\n' '|' | cut -c1-3900 > err_flat.txt
             echo "::error::$(cat err_flat.txt)"
             exit $status
