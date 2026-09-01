@@ -42,7 +42,25 @@ jobs:
       - name: p4a hazirla (BootReceiver yamasi) ve APK derle
         run: |
           bash mobile/ci_prepare.sh
-          buildozer -v android debug
+          set -o pipefail
+          buildozer -v android debug 2>&1 | tee build.log
+          status=$?
+          if [ $status -ne 0 ]; then
+            echo "::error::buildozer cikis kodu $status"
+            grep -naE 'error|Error|ERROR|Traceback|FAILURE|Exception|failed' build.log \
+              | tail -n 40 | cut -c1-350 | while IFS= read -r line; do
+                echo "::error::$line"
+              done
+            exit $status
+          fi
+
+      - name: Hata gunlugu kaydet
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          if-no-files-found: ignore
 
       - name: APK'yi indirilmeye hazirla
         uses: actions/upload-artifact@v4
