@@ -16,9 +16,11 @@ import threading
 import time
 import uuid
 
-PEER_TIMEOUT = 8.0
+PEER_TIMEOUT = 15.0
 CHUNK_SIZE = 64 * 1024
 MAX_FILE_SIZE = 20 * 1024 * 1024 * 1024
+ANNOUNCE_INTERVAL = 5.0   # UDP duyuru araligi (2sn cok uyanik isti; pil/isi)
+PROGRESS_MIN_GAP = 0.4    # UI'ya progress olayi arasindaki min sure (sn)
 
 PROTOKOLS = {
     # key : (APP_ID, DISCOVERY_UDP_PORT, TCP_SERVER_BASE_PORT)
@@ -105,6 +107,14 @@ class Network:
         self.lock = threading.Lock()
         self.running = True
         self.local_ip = get_local_ip()
+        self._last_progress = 0.0
+
+    def _maybe_progress(self, frac, final=False):
+        """Progress olaylarini kisitla; her 64KB'da UI'yi bogma."""
+        now = time.time()
+        if final or (now - self._last_progress) >= PROGRESS_MIN_GAP:
+            self._last_progress = now
+            self.ui_queue.put(("progress", frac))
 
     # ----------------------- ömür döngüsü -----------------------
     def start(self):
@@ -161,7 +171,7 @@ class Network:
     def _announcer(self):
         while self.running:
             self._announce()
-            time.sleep(2.0)
+            time.sleep(ANNOUNCE_INTERVAL)
 
     def _udp_listener(self):
         udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -281,7 +291,8 @@ class Network:
                     chunk = self._recv_exact(conn, min(CHUNK_SIZE, size - received))
                     f.write(chunk)
                     received += len(chunk)
-                    self.ui_queue.put(("progress", received / max(size, 1)))
+                    self._maybe_progress(received / max(size, 1))
+            self._maybe_progress(received / max(size, 1), final=True)
             self.ui_queue.put(("file_in", sender, target, size))
         except (ConnectionError, OSError):
             try:
@@ -337,7 +348,8 @@ class Network:
                         break
                     conn.sendall(chunk)
                     sent += len(chunk)
-                    self.ui_queue.put(("progress", sent / max(size, 1)))
+                    self._maybe_progress(sent / max(size, 1))
+            self._maybe_progress(sent / max(size, 1), final=True)
             self.ui_queue.put(("file_sent", peer["name"], name))
         finally:
             conn.close()

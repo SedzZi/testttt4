@@ -78,6 +78,10 @@ android.accept_sdk_license = True
 # buildozer'in varsayilani ve kivy 2.3.1 ile uyumlu olan master kullanilir.
 p4a.branch = master
 
+# (str) Release derleme ciktisi: apk (buildozer master'da varsayilan aab'dir,
+# aab telefonun ustune kurulamaz!)
+android.release_artifact = apk
+
 [buildozer]
 
 # (int) Log seviyesi

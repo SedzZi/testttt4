@@ -145,25 +145,26 @@ def notify(title, text):
 
 # ------------------------ güç / çoklu yayın kilitleri ------------------------
 def _acquire_locks():
-    """Doze sırasında ağ iş parçacıklarının uyutulmaması için."""
+    """Wi-Fi multicast lock (UDP duyurulari icin).
+
+    NOT: Kalici PARTIAL_WAKE_LOCK bilincli olarak kaldirildi; CPU'yu surekli
+    uyik tutup pili yiyor, telefoni isitiyor ve termal kismana (throttle)
+    yol acarak genel kasma yapiyordu. dataSync foreground servisi Doze
+    korumasi icin yeterli.
+    """
     try:
         from jnius import autoclass
         Context = autoclass("android.content.Context")
-        PowerManager = autoclass("android.os.PowerManager")
         WifiManager = autoclass("android.net.wifi.WifiManager")
         ctx = _android_ctx().getApplicationContext()
-        pm = ctx.getSystemService(Context.POWER_SERVICE)
-        wake = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "lan:wakelock")
-        wake.acquire()
         wm = ctx.getSystemService(Context.WIFI_SERVICE)
         mlock = wm.createMulticastLock("lan:multicast")
         mlock.acquire()
-        _state["locks"] = (wake, mlock)
+        _state["locks"] = (mlock,)
     except Exception:
         pass
 
 
-# ------------------------ kontrol sunucusu ------------------------
 def _control_path():
     return os.path.join(_private_dir(), CONTROL_FILE)
 
@@ -297,7 +298,9 @@ def _start_engine():
         return
     username = (load_config().get("username") or "")[:24] or "Telefon"
     _state["username"] = username
-    for proto in lan_core.PROTOKOLS:
+    # Sohbet kaldirildi; telefon sadece dosya paylasimi (share) agini baslatir.
+    # Boylece bir UDP announce dongusu ve TCP sunucu daha az duzenli is yapar.
+    for proto in ("share",):
         q = queue.Queue()
         net = lan_core.Network(username, q, proto=proto,
                                save_dir=_files_dir())

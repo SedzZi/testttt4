@@ -50,8 +50,6 @@ TEXT = "#e7eaf3"
 MUTED = "#8b93a7"
 GREEN = "#3fd68f"
 RED = "#ff5f6e"
-CHAT_OURS = "#2b3a63"
-CHAT_THEIRS = "#232838"
 
 
 # ---------- Android yardımcıları ----------
@@ -143,8 +141,8 @@ class ControlClient:
         self.connected = True
         self._running = True
         threading.Thread(target=self._recv_loop, daemon=True).start()
-        self.send({"cmd": "ping", "proto": "chat"})
-        self.send({"cmd": "history", "proto": "chat"})
+        self.send({"cmd": "ping", "proto": "share"})
+        self.send({"cmd": "history", "proto": "share"})
         return True
 
     def _recv_loop(self):
@@ -241,113 +239,8 @@ class LoginScreen(Screen):
         self.app.login(name)
 
 
-# ---------- sohbet ekranı içeriği ----------
-class ChatView(BoxLayout):
-    def __init__(self, app, **kw):
-        super().__init__(orientation="vertical", spacing=dp(6),
-                         padding=(dp(8), dp(8), dp(8), dp(6)), **kw)
-        self.app = app
-        self.peers = []           # [(ip, port, name), ...]
-        self._peer_by_name = {}
-
-        top = BoxLayout(orientation="vertical", size_hint_y=None,
-                        height=dp(68), spacing=dp(4))
-        top.add_widget(_label("SOHBET", 12, MUTED, True, "left"))
-        self.peer_spinner = Spinner(
-            text="Kişi seç…", values=("Kişi seç…",),
-            size_hint_y=None, height=dp(40), font_size=sp(14),
-            background_color=get_color_from_hex(PANEL2),
-            color=get_color_from_hex(TEXT))
-        top.add_widget(self.peer_spinner)
-        self.add_widget(top)
-
-        self.chat_scroll = ScrollView()
-        self.msg_box = BoxLayout(orientation="vertical", spacing=dp(6),
-                                 size_hint_y=None)
-        self.msg_box.bind(minimum_height=self.msg_box.setter("height"))
-        self.chat_scroll.add_widget(self.msg_box)
-        self.add_widget(self.chat_scroll)
-
-        bottom = BoxLayout(orientation="horizontal", size_hint_y=None,
-                           height=dp(48), spacing=dp(6))
-        self.entry = TextInput(
-            multiline=False, write_tab=False, hint_text="Mesaj yaz…",
-            font_size=sp(14), background_color=get_color_from_hex(PANEL2),
-            foreground_color=get_color_from_hex(TEXT),
-            cursor_color=get_color_from_hex(ACCENT),
-            padding=(dp(8), dp(10)))
-        self.entry.bind(on_text_validate=lambda i: self.send())
-        send_btn = _btn("➤", self.send, ACCENT, 48)
-        send_btn.size_hint_x = 0.24
-        bottom.add_widget(self.entry)
-        bottom.add_widget(send_btn)
-        self.add_widget(bottom)
-
-    def set_peers(self, peers):
-        """peers: [(ip, port, name), ...]"""
-        self.peers = peers
-        mapping = {}
-        for ip, port, name in peers:
-            mapping.setdefault(name, (ip, port, name))
-        self._peer_by_name = mapping
-        current = self.peer_spinner.text
-        names = [p[2] for p in peers] or ["Kişi seç…"]
-        self.peer_spinner.values = tuple(names)
-        if current in names:
-            self.peer_spinner.text = current
-        elif names and names[0] != "Kişi seç…":
-            self.peer_spinner.text = names[0]
-        else:
-            self.peer_spinner.text = "Kişi seç…"
-
-    def selected_peer(self):
-        name = self.peer_spinner.text
-        if not name or name == "Kişi seç…":
-            return None
-        return self._peer_by_name.get(name)
-
-    def add_message(self, text, ours):
-        box = BoxLayout(orientation="vertical", size_hint_y=None,
-                        padding=(dp(10), dp(6)))
-        box.bind(minimum_height=box.setter("height"))
-        bubble = Label(
-            text=text, size_hint=(1, None),
-            halign="left", valign="middle",
-            text_size=(Window.width * 0.62, None),
-            font_size=sp(15),
-            color=get_color_from_hex(TEXT),
-            background_color=get_color_from_hex(CHAT_OURS if ours else CHAT_THEIRS),
-            padding=(dp(10), dp(8)))
-        bubble.bind(texture_size=lambda inst, val: setattr(inst, "height",
-                                                           val[1] + dp(16)))
-        box.add_widget(bubble)
-        self.msg_box.add_widget(box)
-        while len(self.msg_box.children) > 220:  # bellek koruması
-            last = self.msg_box.children[-1]
-            self.msg_box.remove_widget(last)
-        Clock.schedule_once(lambda dt: setattr(self.chat_scroll, "scroll_y", 0), 0)
-
-    def clear_history(self):
-        self.msg_box.clear_widgets()
-
-    def send(self, *_):
-        text = self.entry.text.strip()
-        if not text:
-            return
-        peer = self.selected_peer()
-        if not peer:
-            self.app.flash("Önce bir kişi seç.")
-            return
-        ok = self.app.ctl.send({"cmd": "send_msg", "proto": "chat",
-                                "ip": peer[0], "port": peer[1], "text": text})
-        if ok:
-            self.entry.text = ""
-            self.add_message(text, ours=True)
-        else:
-            self.app.flash("Arka plan servisine ulaşılamadı.")
-
-
 # ---------- dosya ekranı içeriği ----------
+
 class FilesView(BoxLayout):
     def __init__(self, app, **kw):
         super().__init__(orientation="vertical", spacing=dp(6),
@@ -540,36 +433,9 @@ class MainScreen(Screen):
         header.add_widget(self.status)
         root.add_widget(header)
 
-        self.tabs = ScreenManager()
-        self.chat_screen = Screen(name="chat")
-        self.files_screen = Screen(name="files")
-        self.chat_view = ChatView(app)
         self.files_view = FilesView(app)
-        self.chat_screen.add_widget(self.chat_view)
-        self.files_screen.add_widget(self.files_view)
-        self.tabs.add_widget(self.chat_screen)
-        self.tabs.add_widget(self.files_screen)
-        root.add_widget(self.tabs)
-
-        nav = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(50))
-        self.chat_btn = _btn("💬 Sohbet", self._switch_chat, ACCENT, 50)
-        self.files_btn = _btn("📁 Dosyalar", self._switch_files, PANEL, 50)
-        nav.add_widget(self.chat_btn)
-        nav.add_widget(self.files_btn)
-        root.add_widget(nav)
+        root.add_widget(self.files_view)
         self.add_widget(root)
-        self._switch_chat()
-
-    def _switch_chat(self, *_):
-        self.tabs.current = "chat"
-        self.chat_btn.background_color = get_color_from_hex(ACCENT)
-        self.files_btn.background_color = get_color_from_hex(PANEL)
-        self.files_view.refresh()
-
-    def _switch_files(self, *_):
-        self.tabs.current = "files"
-        self.files_btn.background_color = get_color_from_hex(ACCENT)
-        self.chat_btn.background_color = get_color_from_hex(PANEL)
         self.files_view.refresh()
 
     def flash(self, text, color=GREEN):
@@ -589,9 +455,14 @@ class LanApp(App):
         if kivy is None:
             raise SystemExit("Bu uygulama için Kivy gerekli.")
         Window.clearcolor = get_color_from_hex(BG)
+        # Klavye açılınca tum pencere resize olmasin (relayout kasmasi)
+        try:
+            Window.softinput_mode = "below_target"
+        except Exception:
+            pass
         self.events = queue.Queue()
         self.ctl = ControlClient(self.events)
-        self.peers_by_proto = {"chat": [], "share": []}
+        self.peers_by_proto = {"share": []}
         self.cur_name = self.saved_username()
 
         self.sm = ScreenManager()
@@ -602,7 +473,8 @@ class LanApp(App):
         self.sm.current = "login"
 
         self._drain_evt = Clock.schedule_interval(self._drain, 0.15)
-        self._conn_evt = Clock.schedule_interval(self._ensure_connection, 1.0)
+        # servis yoksa her 1sn baglanma denemesi yerine 2.5sn
+        self._conn_evt = Clock.schedule_interval(self._ensure_connection, 2.5)
 
         if on_android():
             Clock.schedule_once(lambda dt: self._android_start(), 1.5)
@@ -631,8 +503,7 @@ class LanApp(App):
             if self.ctl.connect():
                 self.main_screen.status.text = "Servise bağlandı, kişiler aranıyor…"
                 self.ctl.send({"cmd": "login", "username": self.cur_name or "Telefon"})
-                for proto in ("chat", "share"):
-                    self.ctl.send({"cmd": "peers", "proto": proto})
+                self.ctl.send({"cmd": "peers", "proto": "share"})
                 self.ctl.send({"cmd": "history"})
                 self.main_screen.files_view.refresh()
 
@@ -647,17 +518,11 @@ class LanApp(App):
     def _on_event(self, ev):
         kind = ev.get("ev")
         if kind == "peers":
-            proto = ev.get("proto", "chat")
             peers = [(p["ip"], p["port"], p["name"]) for p in ev.get("peers", [])]
-            self.peers_by_proto[proto] = peers
-            if proto == "chat":
-                self.main_screen.chat_view.set_peers(peers)
-            else:
-                self.main_screen.files_view.set_peers(peers)
-        elif kind == "msg_in":
-            self.main_screen.chat_view.add_message(ev.get("text", ""), ours=False)
-        elif kind == "msg_out":
-            self.main_screen.chat_view.add_message(ev.get("text", ""), ours=True)
+            self.peers_by_proto[ev.get("proto", "share")] = peers
+            self.main_screen.files_view.set_peers(peers)
+        elif kind == "msg_in" or kind == "msg_out":
+            pass  # sohbet kaldirildi; servis artık chat agini baslatmiyor
         elif kind == "file_in":
             self.main_screen.files_view.handle_file_event(
                 ev.get("name", "dosya"), ev.get("path", ""), ev.get("size", 0))
@@ -674,6 +539,8 @@ class LanApp(App):
                 self.main_screen.files_view.progress.value = float(value)
         elif kind == "history":
             for item in ev.get("items", []):
+                if item.get("ev") == "msg_in":
+                    continue  # eski sohbet kayitlari atlanir
                 self._on_event(item)
         elif kind == "pong":
             self.main_screen.status.text = "Arka plan servisi çalışıyor."

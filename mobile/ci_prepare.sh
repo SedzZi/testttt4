@@ -74,3 +74,24 @@ EOF
 else
     echo "ci_prepare: charset_normalizer recipe zaten mevcut"
 fi
+
+# ---- Release imza anahtari ---------------------------------------------
+# Debug APK (android:debuggable=true) ART uzerinde belirgin yavas calisir;
+# release derleme + sabit imza hem hiz hem de "guncelleme ustune kurulur"
+# avantaji saglar. Anahtar Actions cache'inde yasar; ilk derlemede uretilir.
+# NOT: buildozer master imzayi spec'ten degil, P4A_RELEASE_* ortam
+# degiskenlerinden alir (workflow'da export edilir); android.release_artifact
+# = apk buildozer.spec'te ayarli (yoksa varsayilan aab uretir).
+KS="${LAN_KEYSTORE:-/tmp/lan-release.keystore}"
+if [ ! -f "$KS" ]; then
+    if keytool -genkeypair -v -keystore "$KS" -alias lan -keyalg RSA \
+        -keysize 2048 -validity 10000 -storepass lan12345 \
+        -keypass lan12345 \
+        -dname "CN=LAN, OU=LAN, O=LAN, L=Istanbul, C=TR" >/dev/null 2>&1; then
+        echo "ci_prepare: release imza anahtari uretildi: $KS"
+    else
+        echo "ci_prepare: UYARI keytool bulunamadi; APK release-unsigned olur"
+    fi
+else
+    echo "ci_prepare: imza anahtari cache'ten hazir: $KS"
+fi
