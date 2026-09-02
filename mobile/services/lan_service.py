@@ -260,10 +260,16 @@ def _push_history(entry):
 def _engine_event(proto, evt):
     """Network.ui_queue olaylarını UI'ya ve geçmişe işler."""
     if evt[0] == "peers":
-        peers = [{"name": p["name"], "ip": p["ip"], "port": p["port"]}
-                 for p in _state["networks"][proto].get_peers()]
-        _broadcast({"ev": "peers", "proto": proto, "peers": peers})
+        # Hangi agdan gelirse gelsin birlesik listeyi yayinla
+        _broadcast({"ev": "peers", "peers": _all_peers()})
     elif evt[0] == "msg_in":
+        if proto == "chat":
+            # Sohbet arayuzu yok; LANChat'tan gelen mesaj bildirim/tarihce
+            # uretmez, yalnizca UI aciksa bir bilgi satiri olarak gosterilir.
+            if _state["clients"]:
+                _broadcast({"ev": "status",
+                            "text": f"💬 {evt[1]} mesaj gönderdi (telefonda sohbet yok)."})
+            return
         _, who, ip, text = evt
         entry = {"ev": "msg_in", "proto": proto, "from": who, "ip": ip,
                  "text": text, "ts": time.time()}
@@ -298,9 +304,10 @@ def _start_engine():
         return
     username = (load_config().get("username") or "")[:24] or "Telefon"
     _state["username"] = username
-    # Sohbet kaldirildi; telefon sadece dosya paylasimi (share) agini baslatir.
-    # Boylece bir UDP announce dongusu ve TCP sunucu daha az duzenli is yapar.
-    for proto in ("share",):
+    # Sohbet arayuzu kaldirildi ama "chat" agi uyumluluk icin calismaya devam
+    # eder: masaustu LANChat kullanicilari telefonu gorebilsin ve dosya
+    # gonderebilsin. Iki UDP announce dongusu + iki TCP sunucu, cok hafif is.
+    for proto in ("chat", "share"):
         q = queue.Queue()
         net = lan_core.Network(username, q, proto=proto,
                                save_dir=_files_dir())
@@ -343,14 +350,23 @@ def _reply(conn, payload):
         pass
 
 
-def _find_peer(proto, ip, port):
-    net = _state["networks"].get(proto)
-    if not net:
-        return None
-    for p in net.get_peers():
-        if p["ip"] == ip and p["port"] == int(port):
-            return p
-    return None
+def _all_peers():
+    """Tüm ağlardaki (chat + share) kişileri tek listede döndürür."""
+    out = []
+    for proto, net in _state["networks"].items():
+        for p in net.get_peers():
+            out.append({"name": p["name"], "ip": p["ip"], "port": p["port"],
+                        "proto": proto})
+    return out
+
+
+def _find_peer(ip, port):
+    """ip+port'a göre kişiyi tüm ağlarda arar; (proto, peer) döndürür."""
+    for proto, net in _state["networks"].items():
+        for p in net.get_peers():
+            if p["ip"] == ip and p["port"] == int(port):
+                return proto, p
+    return None, None
 
 
 def _handle_command(conn, line):
@@ -359,7 +375,6 @@ def _handle_command(conn, line):
     except ValueError:
         return
     cmd = msg.get("cmd")
-    proto = msg.get("proto", "chat")
 
     if cmd == "ping":
         _reply(conn, {"pong": True, "port": _state["control_port"]})
@@ -373,25 +388,23 @@ def _handle_command(conn, line):
         _reply(conn, {"ok": True, "username": _state["username"],
                       "nets": nets, "files_dir": _files_dir()})
     elif cmd == "peers":
-        peers = [{"name": p["name"], "ip": p["ip"], "port": p["port"]}
-                 for p in _state["networks"][proto].get_peers()]
-        _reply(conn, {"ev": "peers", "proto": proto, "peers": peers})
+        _reply(conn, {"ev": "peers", "peers": _all_peers()})
     elif cmd == "history":
         _reply(conn, {"ev": "history", "items": _state["history"]})
     elif cmd == "send_msg":
-        peer = _find_peer(proto, msg.get("ip"), msg.get("port"))
+        p_proto, peer = _find_peer(msg.get("ip"), msg.get("port"))
         if peer:
-            threading.Thread(target=_do_send_msg, args=(proto, peer, msg.get("text", "")),
+            threading.Thread(target=_do_send_msg, args=(p_proto, peer, msg.get("text", "")),
                              daemon=True).start()
             _reply(conn, {"ok": True})
         else:
             _reply(conn, {"ok": False, "error": "Kişi çevrimdışı"})
     elif cmd == "send_file":
-        peer = _find_peer(proto, msg.get("ip"), msg.get("port"))
+        p_proto, peer = _find_peer(msg.get("ip"), msg.get("port"))
         path = msg.get("path")
         if peer and path and os.path.exists(path):
             threading.Thread(target=_do_send_file,
-                             args=(proto, peer, path, msg.get("name")),
+                             args=(p_proto, peer, path, msg.get("name")),
                              daemon=True).start()
             _reply(conn, {"ok": True})
         else:

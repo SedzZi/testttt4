@@ -209,7 +209,7 @@ class LoginScreen(Screen):
         root.add_widget(Label(text="", size_hint_y=0.3))  # üst boşluk
         root.add_widget(_label("📡", 52, ACCENT, True, "center"))
         root.add_widget(_label("LAN", 30, TEXT, True, "center"))
-        root.add_widget(_label("Aynı ağdaki cihazlarla mesajlaş ve dosya gönder — "
+        root.add_widget(_label("Aynı ağdaki cihazlara dosya gönder — "
                               "arkada kapanmadan çalışır.", 13, MUTED, False, "center"))
         root.add_widget(Label(text="", size_hint_y=0.1))
 
@@ -395,7 +395,7 @@ class FilesView(BoxLayout):
                 if not peer:
                     self.status.text = "Önce bir kişi seç."
                     return
-                ok = self.app.ctl.send({"cmd": "send_file", "proto": "share",
+                ok = self.app.ctl.send({"cmd": "send_file",
                                         "ip": peer[0], "port": peer[1],
                                         "path": tmp, "name": name})
                 text = "Gönderiliyor…" if ok else "Servise ulaşılamadı."
@@ -462,7 +462,6 @@ class LanApp(App):
             pass
         self.events = queue.Queue()
         self.ctl = ControlClient(self.events)
-        self.peers_by_proto = {"share": []}
         self.cur_name = self.saved_username()
 
         self.sm = ScreenManager()
@@ -503,7 +502,7 @@ class LanApp(App):
             if self.ctl.connect():
                 self.main_screen.status.text = "Servise bağlandı, kişiler aranıyor…"
                 self.ctl.send({"cmd": "login", "username": self.cur_name or "Telefon"})
-                self.ctl.send({"cmd": "peers", "proto": "share"})
+                self.ctl.send({"cmd": "peers"})
                 self.ctl.send({"cmd": "history"})
                 self.main_screen.files_view.refresh()
 
@@ -519,7 +518,6 @@ class LanApp(App):
         kind = ev.get("ev")
         if kind == "peers":
             peers = [(p["ip"], p["port"], p["name"]) for p in ev.get("peers", [])]
-            self.peers_by_proto[ev.get("proto", "share")] = peers
             self.main_screen.files_view.set_peers(peers)
         elif kind == "msg_in" or kind == "msg_out":
             pass  # sohbet kaldirildi; servis artık chat agini baslatmiyor

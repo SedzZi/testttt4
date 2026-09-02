@@ -19,7 +19,8 @@ import uuid
 PEER_TIMEOUT = 15.0
 CHUNK_SIZE = 64 * 1024
 MAX_FILE_SIZE = 20 * 1024 * 1024 * 1024
-ANNOUNCE_INTERVAL = 5.0   # UDP duyuru araligi (2sn cok uyanik isti; pil/isi)
+ANNOUNCE_INTERVAL = 3.0   # UDP duyuru araligi; masaustu PEER_TIMEOUT=8sn oldugu
+                          # icin tek kayip paket listeyi ziplamasin
 PROGRESS_MIN_GAP = 0.4    # UI'ya progress olayi arasindaki min sure (sn)
 
 PROTOKOLS = {
