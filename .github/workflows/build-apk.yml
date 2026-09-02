@@ -71,12 +71,24 @@ jobs:
             sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g' -e 's/\r//g' -e 's/[\x00-\x08\x0b\x0c\x0e-\x1f]//g' -e 's/\.\{20,\}/../g' err_excerpt.txt \
               | tr '\n' '|' | cut -c1-3900 > err_flat.txt
             echo "::error::$(cat err_flat.txt)"
+            # merger'in gercek nedeni: "Caused by" satirlari ayri annotation
+            grep -a 'Caused by' build.log | tail -n 12 | cut -c1-320 \
+              | tr '\n' '|' | cut -c1-3900 > cause_flat.txt
+            echo "::error::CAUSE $(cat cause_flat.txt)"
             # dist manifest'i ayri annotation'da (parse hatasi teshisi icin)
             mf=.buildozer/android/platform/build-arm64-v8a/dists/lanmobile/src/main/AndroidManifest.xml
             if [ -f "$mf" ]; then
-              sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g' -e 's/\r//g' "$mf" \
-                | tr '\n' '~' | cut -c1-3900 > mf_flat.txt
-              echo "::error::DISTMANIFEST $(cat mf_flat.txt)"
+              wc=$(wc -c < "$mf")
+              echo "::error::MFSIZE=$wc"
+              for part in 1 2 3 4; do
+                start=$(( (part-1)*3900 + 1 ))
+                end=$(( part*3900 ))
+                sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g' -e 's/\r//g' "$mf" \
+                  | tr '\n' '~' | cut -c${start}-${end} > mf_flat.txt
+                if [ -s mf_flat.txt ]; then
+                  echo "::error::MF${part} $(cat mf_flat.txt)"
+                fi
+              done
             else
               echo "::error::DISTMANIFEST bulunamadi: $mf"
             fi
