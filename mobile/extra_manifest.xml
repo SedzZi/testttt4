@@ -1,7 +1,9 @@
-<!-- NOT: Bu dosyanın içeriği AndroidManifest'in <manifest> KÖK seviyesine
-     eklenir (p4a --extra-manifest-xml). Bu yüzden burada SADECE
-     <uses-permission> olabilir. <receiver> gibi <application> içi elemanlar
-     mobile/ci_patch_p4a.py ile derleme sırasında şablona eklenir. -->
+<!-- NOT: Bu dosyanın içeriği AndroidManifest'in "manifest" KÖK seviyesine
+     eklenir (p4a'nin extra_manifest_xml seçeneği). Bu yüzden burada SADECE
+     uses-permission olabilir. Receiver gibi application içi elemanlar
+     mobile/ci_patch_p4a.py ile derleme sırasında şablona eklenir.
+     (XML yorumu içinde cift tire kullanilamaz, bu yuzden yukarida
+     parametre adi tire'siz yazildi.) -->
 <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
